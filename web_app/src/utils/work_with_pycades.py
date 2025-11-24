@@ -21,3 +21,5 @@ def get_hash_from_bytes(data: bytes) -> str:
 def verify_signature(hashed_data: str, signature: str):
     signedData = pycades.SignedData()
     signedData.VerifyHash("gdfg4545brt", signature, pycades.CADESCOM_CADES_BES)
+    print(signedData)
+    print(dir(signedData))
