@@ -137,7 +137,7 @@ async def sign_document(document_id: str, request: SignRequest):
         """
         return {
             "status": "success",
-            "message": f"Document signed successfully with {request.sign_type}",
+            "message": f"Document signed successfully",
             "document_id": document_id,
             "signed_document_url": f"/api/documents/{document_id}/signed"
         }
