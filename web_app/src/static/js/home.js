@@ -1,5 +1,6 @@
 // Глобальные переменные
 let currentDocumentId = null;
+let currentDocumentHash = null;
 let selectedCertificateIndex = null;
 let certificates = [];
 let cadespluginLoaded = false;
@@ -150,7 +151,7 @@ async function generatePDF() {
 
         const data = await response.json();
         currentDocumentId = data.document_id;
-
+        currentDocumentHash = data.file_hash;
         statusDiv.innerHTML = `<div class="status success">
             Документ создан! ID: ${data.document_id}
         </div>`;
@@ -207,7 +208,7 @@ function signPDF() {
             }
 
             // Устанавливаем полученный хеш
-            yield hashObject.SetHashValue(hashResponse.hash);
+            yield hashObject.SetHashValue(currentDocumentHash);
 
             let oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
             yield oSignedData.propset_ContentEncoding(cadesplugin.CADESCOM_BASE64_TO_BINARY);
