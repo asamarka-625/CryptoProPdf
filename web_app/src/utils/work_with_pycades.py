@@ -7,7 +7,7 @@ import pycades
 # Получаем хэш из байт-кода документа
 def get_hash_from_bytes(data: bytes) -> str:
     hashed_data = pycades.HashedData()
-    hashed_data.DataEncoding = pycades.CADESCOM_BINARY_DATA
+    hashed_data.DataEncoding = pycades.CADESCOM_BASE64_TO_BINARY
     hashed_data.Algorithm = (
         pycades.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256
     )
