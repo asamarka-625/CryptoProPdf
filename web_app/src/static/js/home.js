@@ -194,12 +194,13 @@ function CreateSignature(cadesplugin, oCertificate, oHashedData) {
                 yield oSigner.propset_Certificate(oCertificate);
                 yield oSigner.propset_CheckCertificate(false);
                 yield oSigner.propset_Options(0);
+                yield oSigner.propset_TSAAddress(""); // Очищаем TSA
 
                 // Создаем объект CAdESCOM.CadesSignedData асинхронно
                 var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
 
                 // Вычисляем значение подписи
-                var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+                var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_DEFAULT);
 
                 return args[0](sSignedMessage);
             } catch (err) {
