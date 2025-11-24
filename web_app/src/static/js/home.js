@@ -190,27 +190,15 @@ function CreateSignature(cadesplugin, oCertificate, oHashedData) {
         cadesplugin.async_spawn(function* (args) {
             try {
                 // Создаем объект CAdESCOM.CPSigner асинхронно
-                /*
-                var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPEnvelopedDat");
+                var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
                 yield oSigner.propset_Certificate(oCertificate);
                 yield oSigner.propset_CheckCertificate(false);
-                yield oSigner.propset_Options(0);
-                yield oSigner.propset_TSAAddress(""); // Очищаем TSA
 
                 // Создаем объект CAdESCOM.CadesSignedData асинхронно
                 var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
 
                 // Вычисляем значение подписи
-                var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_ENCODE_BASE);
-                */
-                var oEnvelopedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPEnvelopedData");
-                yield oEnvelopedData.propset_Content(dataToSign);
-
-                var oRecipients = yield oEnvelopedData.Recipients;
-                yield oRecipients.Add(oCertificate);
-
-                // Шифруем данные (альтернативный метод подписи)
-                var sSignedMessage = yield oEnvelopedData.Encrypt(cadesplugin.CADESCOM_ENCODE_BASE64);
+                var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
 
                 return args[0](sSignedMessage);
             } catch (err) {
