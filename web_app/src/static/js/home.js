@@ -193,6 +193,7 @@ function CreateSignature(cadesplugin, oCertificate, oHashedData) {
                 var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
                 yield oSigner.propset_Certificate(oCertificate);
                 yield oSigner.propset_CheckCertificate(false);
+                yield oSigner.propset_Options(0);
 
                 // Создаем объект CAdESCOM.CadesSignedData асинхронно
                 var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
