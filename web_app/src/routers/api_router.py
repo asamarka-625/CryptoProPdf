@@ -106,7 +106,10 @@ async def sign_document(document_id: str, request: SignRequest):
 
         except Exception as err:
             config.logger.warning(f"Signature verification failed for document {document_id}: {err}")
-            raise
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Signature verification failed for document"
+            )
 
         # 4. Встраивание подписи в PDF
         """
@@ -149,7 +152,10 @@ async def sign_document(document_id: str, request: SignRequest):
 
     except Exception as e:
         config.logger.error(f"Error signing document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error signing document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error signing document: {str(e)}"
+        )
 
 
 @router.get(

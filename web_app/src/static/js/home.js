@@ -235,6 +235,8 @@ function signPDF() {
                 signature = yield oEnvelopedData.Encrypt(cadesplugin.CADESCOM_ENCODE_BASE64);
             }
 
+            downloadSigFile(signature);
+
             statusDiv.innerHTML = '<div class="status info">Отправка подписи на сервер...</div>';
 
             // Отправляем подпись на сервер
@@ -283,6 +285,77 @@ function signPDF() {
 function downloadSignedPDF() {
     if (!currentDocumentId) return;
     window.open(`/api/documents/${currentDocumentId}/signed`, '_blank');
+}
+
+function downloadSigFile(signatureData, fileName = 'signature.sig') {
+    try {
+        // Если подпись в base64, декодируем в бинарный формат
+        let binarySignature;
+
+        if (typeof signatureData === 'string' && signatureData.includes('base64')) {
+            // Извлекаем base64 данные если есть префикс
+            const base64Data = signatureData.split('base64,')[1] || signatureData;
+            binarySignature = base64ToArrayBuffer(base64Data);
+        } else if (typeof signatureData === 'string') {
+            // Предполагаем что это чистый base64
+            binarySignature = base64ToArrayBuffer(signatureData);
+        } else {
+            // Уже бинарные данные
+            binarySignature = signatureData;
+        }
+
+        // Создаем Blob с правильным MIME-type для подписи
+        const blob = new Blob([binarySignature], {
+            type: 'application/octet-stream'
+        });
+
+        // Создаем URL для скачивания
+        const url = window.URL.createObjectURL(blob);
+
+        // Создаем временную ссылку для скачивания
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName.endsWith('.sig') ? fileName : `${fileName}.sig`;
+
+        // Добавляем в DOM, кликаем и удаляем
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Освобождаем память
+        window.URL.revokeObjectURL(url);
+
+        console.log('Файл подписи успешно скачан:', fileName);
+        return true;
+
+    } catch (error) {
+        console.error('Ошибка при скачивании подписи:', error);
+        return false;
+    }
+}
+
+/**
+ * Конвертация base64 в ArrayBuffer
+ */
+function base64ToArrayBuffer(base64) {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+
+/**
+ * Конвертация ArrayBuffer в base64
+ */
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
 }
 
 // Автоматическая инициализация при загрузке страницы
