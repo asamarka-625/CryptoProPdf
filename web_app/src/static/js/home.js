@@ -222,47 +222,48 @@ async function signPDF() {
             let oHashedData = InitializeHashedData(cadesplugin, cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256, currentDocumentHash);
 
             let signature = CreateSignature(cadesplugin, cert, oHashedData);
+
+            // Скачиваем .sig файл
+            const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
+            const downloadSuccess = downloadSigFile(signature, fileName);
+
+            // Отправляем подпись на сервер для верификации и сохранения
+            statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
+
+            try {
+                const response = yield fetch(`/api/documents/${currentDocumentId}/sign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    document_id: currentDocumentId,
+                    signature: signature
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const signResponse = yield response.json();
+
+            if (signResponse) {
+                console.log('Подпись успешно сохранена на сервере');
+
+            } else {
+                console.warn('Сервер вернул ошибку:', signResponse?.message);
+            }
+
+            } catch (serverError) {
+                console.warn('Не удалось отправить подпись на сервер:', serverError);
+                // Не прерываем выполнение, т.к. подпись уже скачана
+            }
+
         } catch (exc) {
             console.error('Ошибка', exc);
         }
     });
-
-    // Скачиваем .sig файл
-    const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
-    const downloadSuccess = downloadSigFile(signature, fileName);
-
-    // Отправляем подпись на сервер для верификации и сохранения
-    statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
-
-    try {
-        const response = await fetch(`/api/documents/${currentDocumentId}/sign`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            document_id: currentDocumentId,
-            signature: signature
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const signResponse = await response.json();
-
-    if (signResponse) {
-        console.log('Подпись успешно сохранена на сервере');
-
-    } else {
-        console.warn('Сервер вернул ошибку:', signResponse?.message);
-    }
-
-    } catch (serverError) {
-        console.warn('Не удалось отправить подпись на сервер:', serverError);
-        // Не прерываем выполнение, т.к. подпись уже скачана
-    }
 }
 
 // Скачивание подписанного PDF
