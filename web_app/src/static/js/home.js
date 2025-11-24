@@ -201,7 +201,7 @@ function CreateSignature(oCertificate, oHashedData) {
 }
 
 // Подписание PDF (обновленная версия по примеру из статьи)
-function signPDF() {
+async function signPDF() {
     if (selectedCertificateIndex === null || !currentDocumentId) {
         alert('Сначала выберите сертификат и сгенерируйте документ');
         return;
@@ -213,8 +213,8 @@ function signPDF() {
     let cert = certificates[selectedCertificateIndex].certificate;
 
     // Получаем информацию о сертификате для диагностики
-    let certSubject = cert.SubjectName;
-    let certThumbprint = cert.Thumbprint;
+    let certSubject = yield cert.SubjectName;
+    let certThumbprint = yield cert.Thumbprint;
     console.log('Подписание сертификатом:', certSubject);
 
     let oHashedData = InitializeHashedData(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256, currentDocumentHash);
