@@ -1,0 +1,67 @@
+FROM ubuntu:24.04
+
+WORKDIR /app
+
+# 1. Копируем файлы зависимостей
+COPY linux-amd64_deb.tgz .
+
+# Устанавливаем системные зависимости
+RUN apt update && \
+    apt install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    git \
+    cmake \
+    build-essential \
+    libboost-all-dev \
+    python3-dev \
+    unzip \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Устанавливаем CryptoPro
+RUN tar xvf linux-amd64_deb.tgz
+
+WORKDIR linux-amd64_deb
+
+RUN ./install.sh && \
+    apt install -y --no-install-recommends ./lsb-cprocsp-devel_5.0*.deb && \
+    apt install -y --no-install-recommends ./cprocsp-pki-cades*.deb && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 3. Копируем файлы для настройки CryptoPro и устанавливаем зависимости Python
+COPY test.000/ ./test.000/
+COPY certnew.cer .
+
+RUN mkdir -p /var/opt/cprocsp/keys/root && \
+    cp -r test.000 /var/opt/cprocsp/keys/root/ && \
+    /opt/cprocsp/bin/amd64/csptest -keyset -enum_cont -fqcn -verifycontext && \
+    /opt/cprocsp/bin/amd64/certmgr -inst -store mroot -file certnew.cer
+
+COPY requirements.txt .
+
+# 4. Создаем виртуальное окружение и устанавливаем Python зависимости
+RUN python3 -m venv def && \
+    def/bin/pip install --upgrade pip && \
+    def/bin/pip install -r requirements.txt
+
+# 5. Собираем pycades
+
+RUN git clone https://github.com/CryptoPro/pycades.git
+
+WORKDIR pycades
+
+RUN mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j4
+
+WORKDIR /app
+
+# 6. Копируем остальные файлы приложения
+COPY . .
+
+CMD ["def/bin/python", "main.py"]

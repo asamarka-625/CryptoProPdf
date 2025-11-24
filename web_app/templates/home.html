@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подписание PDF документов</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .cert-item {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+        }
+        .cert-item.selected {
+            border-color: #007cba;
+            background: #f0f8ff;
+        }
+    </style>
+    <script language="javascript" src="https://www.cryptopro.ru/sites/default/files/products/cades/cadesplugin_api.js"></script>
+</head>
+<body>
+    <h1>Подписание PDF документов с КриптоПРО</h1>
+    
+    <div class="container">
+        <h3>1. Инициализация плагина</h3>
+        <div id="pluginStatus" class="status info">Ожидание загрузки КриптоПРО плагина...</div>
+        <button onclick="initializePlugin()">Инициализировать плагин</button>
+    </div>
+
+    <div class="container">
+        <h3>2. Загрузка сертификатов</h3>
+        <button onclick="loadCertificates()" id="loadCertsBtn" disabled>Загрузить сертификаты</button>
+        <div id="certificatesList"></div>
+        <div id="certStatus"></div>
+    </div>
+
+    <div class="container">
+        <h3>3. Генерация документа</h3>
+        <button onclick="generatePDF()" id="generateBtn" disabled>Сгенерировать PDF</button>
+        <div id="generateStatus"></div>
+    </div>
+
+    <div class="container">
+        <h3>4. Подписание документа</h3>
+        <button onclick="signPDF()" id="signBtn" disabled>Подписать документ</button>
+        <div id="signStatus"></div>
+    </div>
+
+    <div class="container">
+        <h3>5. Загрузка подписанного документа</h3>
+        <button onclick="downloadSignedPDF()" id="downloadBtn" disabled>Скачать подписанный PDF</button>
+    </div>
+
+    <script src="/static/js/home.js"></script>
+</body>
+</html>

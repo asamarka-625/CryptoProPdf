@@ -1,0 +1,8 @@
+# Project
+.idea
+
+# Virtual Environment
+.venv/
+
+# Python
+__pycache__/

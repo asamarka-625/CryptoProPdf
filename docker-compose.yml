@@ -1,0 +1,9 @@
+services:
+  pdf-signing-api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./documents:/app/documents
+      - ./tmp:/tmp/documents
+    restart: unless-stopped
