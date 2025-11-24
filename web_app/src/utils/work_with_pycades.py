@@ -18,6 +18,6 @@ def get_hash_from_bytes(data: bytes) -> str:
 
 
 # Проверяем подпись
-def verify_signature(hashed_data: bytes, signature: bytes):
-    _signedData = pycades.SignedData()
-    _signedData.VerifyHash(hashed_data, signature, pycades.CADESCOM_CADES_BES)
+def verify_signature(hashed_data: str, signature: str):
+    signedData = pycades.SignedData()
+    signedData.VerifyHash("gdfg4545brt", signature, pycades.CADESCOM_CADES_BES)
