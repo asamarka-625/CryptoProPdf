@@ -180,6 +180,9 @@ function signPDF() {
             statusDiv.innerHTML = '<div class="status info">Создание подписи...</div>';
 
             let cert = certificates[selectedCertificateIndex].certificate;
+            let certPublicKey = yield cert.PublicKey();
+            let certAlgorithm = yield certPublicKey.Algorithm;
+            let algorithmValue = yield certAlgorithm.Value;
 
             // Создаем объекты для подписи
             let oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
