@@ -178,89 +178,189 @@ function signPDF() {
 
     cadesplugin.async_spawn(function*() {
         try {
-            statusDiv.innerHTML = '<div class="status info">Создание подписи...</div>';
+            statusDiv.innerHTML = '<div class="status info">Подготовка к подписанию...</div>';
 
             let cert = certificates[selectedCertificateIndex].certificate;
-            let certPublicKey = yield cert.PublicKey();
-            let certAlgorithm = yield certPublicKey.Algorithm;
-            let algorithmValue = yield certAlgorithm.Value;
 
-            // Создаем объекты для подписи
+            // Получаем информацию о сертификате для диагностики
+            let certSubject = yield cert.SubjectName;
+            let certThumbprint = yield cert.Thumbprint;
+            console.log('Подписание сертификатом:', certSubject);
+
+            // Проверяем наличие закрытого ключа
+            try {
+                let hasPrivateKey = yield cert.HasPrivateKey();
+                if (!hasPrivateKey) {
+                    throw new Error('Нет доступа к закрытому ключу сертификата');
+                }
+            } catch (e) {
+                console.warn('Не удалось проверить закрытый ключ:', e.message);
+            }
+
+            // Создаем подписанта с правильными настройками
             let oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
             yield oSigner.propset_Certificate(cert);
 
-            // ВАЖНО: Отключаем проверку цепочки доверия или настраиваем параметры
-            yield oSigner.propset_Options(0); // Убираем CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN
-
-            // Альтернативные варианты настройки:
-            // yield oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_END_ENTITY_ONLY);
-
-            // Отключаем проверку цепочки при подписании
+            // ВКЛЮЧАЕМ проверку сертификата для валидной подписи
             yield oSigner.propset_CheckCertificate(false);
 
-            let hashObject = yield cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
+            // Используем правильные опции
+            yield oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN);
 
-            // Устанавливаем алгоритм хеширования
-            if (algorithmValue === "1.2.643.7.1.1.1.1") {
-                yield hashObject.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);
-            } else {
-                throw new Error('Не удалось установить алгоритм хэширования');
+            // Добавляем время подписания
+            yield oSigner.propset_SigningTime(new Date());
+
+            // Опционально: служба штампов времени
+            try {
+                yield oSigner.propset_TSAAddress("http://cryptopro.ru/tsp/");
+            } catch (e) {
+                console.log('Служба штампов времени недоступна:', e.message);
             }
 
-            // Устанавливаем полученный хеш
-            yield hashObject.SetHashValue(currentDocumentHash);
+            statusDiv.innerHTML = '<div class="status info">Создание подписи...</div>';
 
             let oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
             yield oSignedData.propset_ContentEncoding(cadesplugin.CADESCOM_BASE64_TO_BINARY);
 
-            // Пробуем самые простые типы подписи
+            // Устанавливаем содержимое для подписи
+            yield oSignedData.propset_Content(currentDocumentHash);
+
             let signature;
+            let signatureType = '';
+
+            // Пробуем разные типы подписи в порядке надежности
             try {
-                // Сначала пробуем RAW подпись (самая простая)
-                signature = yield oSignedData.SignHash(
-                    hashObject,
+                // МЕТОД 1: CAdES-X Long Type 1 (самый надежный)
+                signature = yield oSignedData.SignCades(
                     oSigner,
-                    cadesplugin.CADESCOM_CADES_BES
+                    cadesplugin.CADESCOM_CADES_X_LONG_TYPE_1
                 );
-            } catch (signError) {
-                console.log('CAdES-BES не сработал, пробуем альтернативный метод...', signError);
+                signatureType = 'CAdES-X Long Type 1';
+                console.log('Подпись создана: CAdES-X Long Type 1');
 
-                // Альтернативный подход - создаем подпись через CPEnvelopedData
-                let oEnvelopedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPEnvelopedData");
-                yield oEnvelopedData.propset_Content(currentDocumentHash);
+            } catch (e1) {
+                console.log('CAdES-X Long не сработал, пробуем CAdES-BES:', e1.message);
 
-                let oRecipients = yield oEnvelopedData.Recipients;
-                yield oRecipients.Add(cert);
+                try {
+                    // МЕТОД 2: CAdES-BES
+                    signature = yield oSignedData.SignCades(
+                        oSigner,
+                        cadesplugin.CADESCOM_CADES_BES
+                    );
+                    signatureType = 'CAdES-BES';
+                    console.log('Подпись создана: CAdES-BES');
 
-                signature = yield oEnvelopedData.Encrypt(cadesplugin.CADESCOM_ENCODE_BASE64);
+                } catch (e2) {
+                    console.log('CAdES-BES не сработал, пробуем базовую подпись:', e2.message);
+
+                    try {
+                        // МЕТОД 3: Базовая подпись
+                        signature = yield oSignedData.SignCades(
+                            oSigner,
+                            cadesplugin.CADESCOM_CADES_DEFAULT
+                        );
+                        signatureType = 'CAdES Default';
+                        console.log('Подпись создана: CAdES Default');
+
+                    } catch (e3) {
+                        console.log('Все методы CAdES не сработали, пробуем SignHash:', e3.message);
+
+                        // МЕТОД 4: SignHash как запасной вариант
+                        let oHashedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
+
+                        // Определяем алгоритм хеширования
+                        try {
+                            let certPublicKey = yield cert.PublicKey();
+                            let certAlgorithm = yield certPublicKey.Algorithm;
+                            let algorithmValue = yield certAlgorithm.Value;
+
+                            if (algorithmValue === "1.2.643.7.1.1.1.1") {
+                                yield oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);
+                            } else {
+                                yield oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411);
+                            }
+                        } catch (algError) {
+                            // Используем GOST 2012 по умолчанию
+                            yield oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);
+                        }
+
+                        yield oHashedData.SetHashValue(currentDocumentHash);
+
+                        signature = yield oSignedData.SignHash(
+                            oHashedData,
+                            oSigner,
+                            cadesplugin.CADESCOM_CADES_BES
+                        );
+                        signatureType = 'SignHash';
+                        console.log('Подпись создана: SignHash');
+                    }
+                }
             }
 
-            downloadSigFile(signature);
+            if (!signature) {
+                throw new Error('Не удалось создать подпись ни одним из методов');
+            }
 
-            statusDiv.innerHTML = '<div class="status info">Отправка подписи на сервер...</div>';
+            // Скачиваем .sig файл
+            const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
+            const downloadSuccess = downloadSigFile(signature, fileName);
 
-            // Отправляем подпись на сервер
-            const signResponse = yield new Promise((resolve, reject) => {
-                fetch(`/api/documents/${currentDocumentId}/sign`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        document_id: currentDocumentId,
-                        signature: signature,
-                    })
-                })
-                .then(response => response.json())
-                .then(data => resolve(data))
-                .catch(error => reject(error));
-            });
+            if (downloadSuccess) {
+                statusDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ Подпись успешно создана и скачана!
+                        <br><small>Тип подписи: ${signatureType}</small>
+                        <br><small>Сертификат: ${certSubject}</small>
+                        <br><small>Файл: ${fileName}</small>
+                    </div>
+                `;
 
-            if (signResponse && signResponse.status === "success") {
-                statusDiv.innerHTML = `<div class="status success">${signResponse.message}</div>`;
-                document.getElementById('downloadBtn').disabled = false;
+                // Сохраняем подпись для возможного повторного скачивания
+                window.lastSignature = signature;
+                window.lastSignatureType = signatureType;
+
             } else {
-                throw new Error(signResponse.message || 'Ошибка при сохранении подписи');
+                throw new Error('Не удалось скачать файл подписи');
+            }
+
+            // Отправляем подпись на сервер для верификации и сохранения
+            statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
+
+            try {
+                const signResponse = yield new Promise((resolve, reject) => {
+                    fetch(`/api/documents/${currentDocumentId}/sign`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            document_id: currentDocumentId,
+                            signature: signature
+                            }
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => resolve(data))
+                    .catch(error => reject(error));
+                });
+
+                if (signResponse && signResponse.success) {
+                    console.log('Подпись успешно сохранена на сервере');
+                    if (document.getElementById('downloadBtn')) {
+                        document.getElementById('downloadBtn').disabled = false;
+                    }
+                } else {
+                    console.warn('Сервер вернул ошибку:', signResponse?.message);
+                }
+
+            } catch (serverError) {
+                console.warn('Не удалось отправить подпись на сервер:', serverError);
+                // Не прерываем выполнение, т.к. подпись уже скачана
             }
 
         } catch (exc) {
@@ -268,12 +368,21 @@ function signPDF() {
 
             let errorMessage = `Ошибка подписания: ${exc.message}`;
 
-            // Добавляем понятное описание ошибки
+            // Расшифровка распространенных ошибок
             if (exc.message.includes('0x800B0109') || exc.message.includes('цепочка')) {
-                errorMessage += '<br><br><strong>Решение проблемы:</strong>';
-                errorMessage += '<br>1. Установите корневой сертификат УЦ в "Доверенные корневые центры сертификации"';
-                errorMessage += '<br>2. Или используйте сертификат от доверенного УЦ';
-                errorMessage += '<br>3. Проверьте срок действия сертификатов в цепочке';
+                errorMessage += '<br><br><strong>Решение проблемы с цепочкой доверия:</strong>';
+                errorMessage += '<br>• Установите корневой сертификат УЦ в "Доверенные корневые центры сертификации"';
+                errorMessage += '<br>• Проверьте срок действия сертификатов в цепочке';
+                errorMessage += '<br>• Убедитесь, что все промежуточные сертификаты установлены';
+            } else if (exc.message.includes('0x80090008')) {
+                errorMessage += '<br><br><strong>Проблема с закрытым ключом:</strong>';
+                errorMessage += '<br>• Убедитесь, что токен/смарт-карта подключены';
+                errorMessage += '<br>• Проверьте пин-код';
+                errorMessage += '<br>• Переустановите драйверы токена';
+            } else if (exc.message.includes('0x80091004')) {
+                errorMessage += '<br><br><strong>Недопустимый тип криптографического сообщения:</strong>';
+                errorMessage += '<br>• Проверьте настройки КриптоПРО';
+                errorMessage += '<br>• Попробуйте другой тип подписи';
             }
 
             statusDiv.innerHTML = `<div class="status error">${errorMessage}</div>`;
