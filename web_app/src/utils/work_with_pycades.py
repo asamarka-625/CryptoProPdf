@@ -1,13 +1,13 @@
 # Внешние зависимости
 import sys
-from typing import Any
+from typing import Tuple, Any
 from base64 import b64encode
 sys.path.append('/app/pycades')
 import pycades
 
 
 # Получаем хэш из байт-кода документа
-def get_hash_from_bytes(data: bytes) -> str:
+def get_hash_from_bytes(data: bytes) -> Tuple[str, Any]:
     hashed_data = pycades.HashedData()
     hashed_data.DataEncoding = pycades.CADESCOM_BASE64_TO_BINARY
     hashed_data.Algorithm = (
@@ -15,7 +15,7 @@ def get_hash_from_bytes(data: bytes) -> str:
     )
 
     hashed_data.Hash(b64encode(data).decode())
-    return hashed_data.Value
+    return hashed_data.Value, hashed_data
 
 
 # Проверяем подпись
