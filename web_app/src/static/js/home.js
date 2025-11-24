@@ -237,35 +237,29 @@ async function signPDF() {
     statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
 
     try {
-        const signResponse = yield new Promise((resolve, reject) => {
-            fetch(`/api/documents/${currentDocumentId}/sign`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    document_id: currentDocumentId,
-                    signature: signature
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => resolve(data))
-            .catch(error => reject(error));
-        });
+        const response = await fetch(`/api/documents/${currentDocumentId}/sign`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            document_id: currentDocumentId,
+            signature: signature
+        })
+    });
 
-        if (signResponse && signResponse.success) {
-            console.log('Подпись успешно сохранена на сервере');
-            if (document.getElementById('downloadBtn')) {
-                document.getElementById('downloadBtn').disabled = false;
-            }
-        } else {
-            console.warn('Сервер вернул ошибку:', signResponse?.message);
-        }
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const signResponse = await response.json();
+
+    if (signResponse) {
+        console.log('Подпись успешно сохранена на сервере');
+
+    } else {
+        console.warn('Сервер вернул ошибку:', signResponse?.message);
+    }
 
     } catch (serverError) {
         console.warn('Не удалось отправить подпись на сервер:', serverError);
