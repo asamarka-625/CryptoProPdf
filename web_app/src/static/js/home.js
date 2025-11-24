@@ -219,15 +219,13 @@ async function signPDF() {
             let certThumbprint = yield cert.Thumbprint;
             console.log('Подписание сертификатом:', certSubject);
 
-            // остальной код...
+            let oHashedData = InitializeHashedData(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256, currentDocumentHash);
+
+            let signature = CreateSignature(cert, oHashedData);
         } catch (exc) {
-            console.error('Ошибка выбора сертификата');
+            console.error('Ошибка', exc);
         }
     });
-
-    let oHashedData = InitializeHashedData(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256, currentDocumentHash);
-
-    let signature = CreateSignature(cert, oHashedData);
 
     // Скачиваем .sig файл
     const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
