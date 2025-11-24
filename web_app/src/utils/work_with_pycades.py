@@ -1,5 +1,6 @@
 # Внешние зависимости
 import sys
+from base64 import b64encode
 sys.path.append('/app/pycades')
 import pycades
 
@@ -11,9 +12,8 @@ def get_hash_from_bytes(data: bytes) -> str:
     hashed_data.Algorithm = (
         pycades.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256
     )
-    hashed_data.SetData(data)
-    hashed_data.Hash()
 
+    hashed_data.Hash(b64encode(data).decode())
     return hashed_data.Value
 
 

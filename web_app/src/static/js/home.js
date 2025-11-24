@@ -179,6 +179,8 @@ function signPDF() {
         try {
             statusDiv.innerHTML = '<div class="status info">Создание подписи...</div>';
 
+            let cert = certificates[selectedCertificateIndex].certificate;
+
             // Создаем объекты для подписи
             let oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
             yield oSigner.propset_Certificate(cert);
