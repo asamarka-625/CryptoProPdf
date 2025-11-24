@@ -105,6 +105,7 @@ async def sign_document(document_id: str, request: SignRequest):
 
         except Exception as err:
             config.logger.warning(f"Signature verification failed for document {document_id}: {err}")
+            raise
 
         # 4. Встраивание подписи в PDF
         """
@@ -146,7 +147,7 @@ async def sign_document(document_id: str, request: SignRequest):
         raise
 
     except Exception as e:
-        config.logger.error(f"Error signing document {document_id}: {str(e)}", exc_info=True)
+        config.logger.error(f"Error signing document {document_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error signing document: {str(e)}")
 
 
