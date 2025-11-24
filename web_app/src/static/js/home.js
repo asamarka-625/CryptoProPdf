@@ -227,7 +227,7 @@ function signPDF() {
 
                 // Альтернативный подход - создаем подпись через CPEnvelopedData
                 let oEnvelopedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPEnvelopedData");
-                yield oEnvelopedData.propset_Content(hashResponse.hash);
+                yield oEnvelopedData.propset_Content(currentDocumentHash);
 
                 let oRecipients = yield oEnvelopedData.Recipients;
                 yield oRecipients.Add(cert);
