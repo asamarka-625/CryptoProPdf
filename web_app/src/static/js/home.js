@@ -210,12 +210,20 @@ async function signPDF() {
     const statusDiv = document.getElementById('signStatus');
     statusDiv.innerHTML = '<div class="status info">Начало процесса подписания...</div>';
 
-    let cert = certificates[selectedCertificateIndex].certificate;
+    cadesplugin.async_spawn(function*() {
+        try {
+            let cert = certificates[selectedCertificateIndex].certificate;
 
-    // Получаем информацию о сертификате для диагностики
-    let certSubject = yield cert.SubjectName;
-    let certThumbprint = yield cert.Thumbprint;
-    console.log('Подписание сертификатом:', certSubject);
+            // Получаем информацию о сертификате для диагностики
+            let certSubject = yield cert.SubjectName;
+            let certThumbprint = yield cert.Thumbprint;
+            console.log('Подписание сертификатом:', certSubject);
+
+            // остальной код...
+        } catch (exc) {
+            console.error('Ошибка выбора сертификата');
+        }
+    });
 
     let oHashedData = InitializeHashedData(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256, currentDocumentHash);
 
