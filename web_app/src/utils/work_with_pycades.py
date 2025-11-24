@@ -1,5 +1,6 @@
 # Внешние зависимости
 import sys
+from typing import Any
 from base64 import b64encode
 sys.path.append('/app/pycades')
 import pycades
@@ -18,7 +19,7 @@ def get_hash_from_bytes(data: bytes) -> str:
 
 
 # Проверяем подпись
-def verify_signature(hashed_data: str, signature: str):
+def verify_signature(hashed_data: Any, signature: str):
     signedData = pycades.SignedData()
     signedData.VerifyHash(hashed_data, signature, pycades.CADESCOM_CADES_BES)
     print(signedData)

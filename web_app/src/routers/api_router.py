@@ -35,12 +35,13 @@ async def generate_pdf():
             async with aiofiles.open(tmp_file.name, "rb") as f:
                 content = await f.read()
 
-            hash_file = get_hash_from_bytes(content)
+            hash_file, hashed_data = get_hash_from_bytes(content)
 
             document_info = DocumentInfo(
                 document_id=document_id,
                 file_path=tmp_file.name,
-                hash=hash_file
+                hash=hash_file,
+                hashed_data=hashed_data
             )
 
             documents_store[document_id] = document_info
@@ -99,7 +100,7 @@ async def sign_document(document_id: str, request: SignRequest):
         # 3. Верификация подписи
         try:
             verification_result = verify_signature(
-                hashed_data=document_info.hash,
+                hashed_data=document_info.hashed_data,
                 signature=signature_bytes
             )
 
