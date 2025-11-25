@@ -23,6 +23,6 @@ def verify_signature(hashed_data: Any, signature: str):
     print("hashed_data", type(hashed_data), hashed_data)
     print("signature", type(signature), signature)
     signedData = pycades.SignedData()
-    signedData.VerifyHash(hashed_data, signature, pycades.CADESCOM_CADES_BES)
+    signedData.VerifyHash(hashed_data, signature, pycades.CADESCOM_VERIFY_SIGNATURE_ONLY)
     print(signedData)
     print(dir(signedData))

@@ -3,6 +3,7 @@ const API_BASE = '/signature';
 
 let currentDocumentId = null;
 let currentDocumentHash = null;
+let currentFileUrl = null;
 let selectedCertificateIndex = null;
 let certificates = [];
 let cadespluginLoaded = false;
@@ -154,6 +155,7 @@ async function generatePDF() {
         const data = await response.json();
         currentDocumentId = data.document_id;
         currentDocumentHash = data.file_hash;
+        currentFileUrl = `/signature${data.file_url}`;
         statusDiv.innerHTML = `<div class="status success">
             Документ создан! ID: ${data.document_id}
         </div>`;
@@ -180,14 +182,16 @@ function signPDF() {
 
     cadesplugin.async_spawn(function*() {
         try {
+            console.log("File", currentFileUrl);
+
             let cert = certificates[selectedCertificateIndex].certificate;
 
             // Получаем информацию о сертификате для диагностики
             let certSubject = yield cert.SubjectName;
             let certThumbprint = yield cert.Thumbprint;
             console.log('Подписание сертификатом:', certSubject);
-            console.log("create oHashedData");
 
+            console.log("create oHashedData");
             var oHashedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
 
             // Инициализируем объект заранее вычисленным хэш-значением
@@ -203,6 +207,7 @@ function signPDF() {
             var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
             console.log("sSignedMessage", sSignedMessage);
 
+
             // Создаем объект CAdESCOM.CadesSignedData
             var oSignedData2 = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
 
@@ -215,9 +220,61 @@ function signPDF() {
                 return;
             }
 
-            // Скачиваем .sig файл
-            const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
-            const downloadSuccess = downloadSigFile(sSignedMessage, fileName);
+            downloadSignatureBase64(sSignedMessage, `signed_${currentDocumentId}`);
+
+            /*
+            var fileData = yield loadFileFromUrl(currentFileUrl);
+            console.log("fileData", fileData);
+            var fileName = getFileNameFromUrl(currentFileUrl);
+
+            var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+            yield oSigner.propset_Certificate(cert);
+            yield oSigner.propset_CheckCertificate(true);
+
+            var oSignature = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSignature");
+
+            // Настраиваем параметры визуальной подписи
+            yield oSignature.propset_Reason("Документ подписан электронной подписью");
+            yield oSignature.propset_Location("Москва");
+            yield oSignature.propset_ContactInfo("email@example.com");
+
+            // Привязываем визуальное представление к подписанту
+            yield oSigner.propset_Signature(oSignature);
+
+            var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+            yield oSignedData.propset_ContentEncoding(cadesplugin.CADESCOM_BASE64_TO_BINARY);
+            yield oSignedData.propset_Content(fileData);
+
+            var sSignedMessage;
+            try {
+                sSignedMessage = yield oSignedData.SignCades(
+                    oSigner,
+                    cadesplugin.CADESCOM_CADES_BES,
+                    false
+                );
+            } catch (err) {
+                alert("Failed to create signature. Error: " + cadesplugin.getLastError(err));
+                return;
+            }
+
+            var oSignedData2 = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+            try {
+                yield oSignedData2.propset_ContentEncoding(cadesplugin.CADESCOM_BASE64_TO_BINARY);
+                yield oSignedData2.propset_Content(fileData);
+                yield oSignedData2.VerifyCades(
+                    sSignedMessage,
+                    cadesplugin.CADESCOM_CADES_BES,
+                    false
+                );
+                alert("Signature verified successfully for file: " + fileName);
+            } catch (err) {
+                alert("Failed to verify signature. Error: " + cadesplugin.getLastError(err));
+                return;
+            }
+
+            // Скачиваем файл
+            downloadSignedPdf(sSignedMessage, fileName);
+            */
 
             // Отправляем подпись на сервер для верификации и сохранения
             statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
@@ -258,81 +315,118 @@ function signPDF() {
     });
 }
 
-// Скачивание подписанного PDF
-function downloadSignedPDF() {
-    if (!currentDocumentId) return;
-    window.open(`${API_BASE}/api/documents/${currentDocumentId}/signed`, '_blank');
+// Функция для загрузки файла по URL
+function loadFileFromUrl(url) {
+    return new Promise((resolve, reject) => {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var blob = xhr.response;
+                var reader = new FileReader();
+
+                reader.onload = function() {
+                    var base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+
+                reader.onerror = function() {
+                    reject(new Error('Failed to read blob as base64'));
+                };
+
+                reader.readAsDataURL(blob);
+            } else {
+                reject(new Error('Failed to load file: ' + xhr.statusText));
+            }
+        };
+
+        xhr.onerror = function() {
+            reject(new Error('Network error while loading file'));
+        };
+
+        xhr.send();
+    });
 }
 
-function downloadSigFile(signatureData, fileName = 'signature.sig') {
-    try {
-        // Если подпись в base64, декодируем в бинарный формат
-        let binarySignature;
+function downloadSignedPdf(pdfData, fileName) {
+    // Добавляем префикс для имени файла
+    var signedFileName = "signed_" + fileName;
 
-        if (typeof signatureData === 'string' && signatureData.includes('base64')) {
-            // Извлекаем base64 данные если есть префикс
-            const base64Data = signatureData.split('base64,')[1] || signatureData;
-            binarySignature = base64ToArrayBuffer(base64Data);
-        } else if (typeof signatureData === 'string') {
-            // Предполагаем что это чистый base64
-            binarySignature = base64ToArrayBuffer(signatureData);
-        } else {
-            // Уже бинарные данные
-            binarySignature = signatureData;
-        }
-
-        // Создаем Blob с правильным MIME-type для подписи
-        const blob = new Blob([binarySignature], {
-            type: 'application/octet-stream'
-        });
-
-        // Создаем URL для скачивания
-        const url = window.URL.createObjectURL(blob);
-
-        // Создаем временную ссылку для скачивания
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName.endsWith('.sig') ? fileName : `${fileName}.sig`;
-
-        // Добавляем в DOM, кликаем и удаляем
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Освобождаем память
-        window.URL.revokeObjectURL(url);
-
-        console.log('Файл подписи успешно скачан:', fileName);
-        return true;
-
-    } catch (error) {
-        console.error('Ошибка при скачивании подписи:', error);
-        return false;
-    }
-}
-
-/**
- * Конвертация base64 в ArrayBuffer
- */
-function base64ToArrayBuffer(base64) {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
+    // Создаем blob из base64 данных
+    var binaryString = atob(pdfData);
+    var bytes = new Uint8Array(binaryString.length);
+    for (var i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
     }
-    return bytes;
+    var blob = new Blob([bytes], { type: 'application/pdf' });
+
+    // Создаем ссылку для скачивания
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = signedFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert("PDF с подписью успешно создан и скачан: " + signedFileName);
 }
 
-/**
- * Конвертация ArrayBuffer в base64
- */
-function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
+// Функция для извлечения имени файла из URL
+function getFileNameFromUrl(url) {
+    return url.substring(url.lastIndexOf('/') + 1);
+}
+
+// Функция для скачивания подписи в base64
+function downloadSignatureBase64(signatureData, fileName) {
+    try {
+        // Подпись от CAdESCOM обычно возвращается в base64 формате
+        // Проверяем, является ли строка валидным base64
+        let data = signatureData;
+
+        // Если данные не в base64 (нет типичных признаков), конвертируем
+        if (typeof signatureData === 'string' &&
+            !signatureData.startsWith('MI') &&
+            !signatureData.match(/^[A-Za-z0-9+/=]+$/)) {
+            // Конвертируем в base64
+            data = btoa(unescape(encodeURIComponent(signatureData)));
+        }
+
+        // Декодируем base64 обратно в бинарные данные для Blob
+        const binaryString = atob(data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Создаем Blob с правильным MIME type для подписи
+        const blob = new Blob([bytes], { type: 'application/octet-stream' });
+
+        // Создаем ссылку для скачивания
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName.endsWith('.sig') ? fileName : fileName + '.sig';
+        a.style.display = 'none';
+
+        document.body.appendChild(a);
+        a.click();
+
+        // Очищаем ресурсы
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 100);
+
+        console.log("Signature file downloaded successfully: " + fileName);
+
+    } catch (error) {
+        console.error("Error downloading signature file:", error);
+        alert("Error saving signature file: " + error.message);
     }
-    return btoa(binary);
 }
 
 // Автоматическая инициализация при загрузке страницы
