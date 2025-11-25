@@ -2,7 +2,7 @@ services:
   pdf-signing-api:
     build: .
     ports:
-      - "8000:8000"
+      - "8001:8001"
     volumes:
       - ./documents:/app/documents
       - ./tmp:/tmp/documents
