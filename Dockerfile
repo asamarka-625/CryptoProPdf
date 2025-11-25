@@ -35,7 +35,7 @@ RUN ./install.sh && \
 
 COPY test.000 .
 
-RUN cp -r /app/test.000 /var/opt/cprocsp/keys/root &&\
+RUN cp -r test.000 /var/opt/cprocsp/keys/root &&\
     /opt/cprocsp/bin/amd64/csptest -keyset -enum_cont -fqcn -verifycontext &&\
     /opt/cprocsp/bin/amd64/certmgr -inst -store mroot -file /app/certnew.cer
 
