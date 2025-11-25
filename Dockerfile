@@ -58,4 +58,4 @@ WORKDIR /app
 # 6. Копируем остальные файлы приложения
 COPY . .
 
-CMD ["venv/bin/uvicorn", "web_app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["venv/bin/uvicorn", "web_app:app", "--host", "0.0.0.0", "--port", "8001"]
