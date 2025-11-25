@@ -20,6 +20,8 @@ def get_hash_from_bytes(data: bytes) -> Tuple[str, Any]:
 
 # Проверяем подпись
 def verify_signature(hashed_data: Any, signature: bytes):
+    print("hashed_data", type(hashed_data), hashed_data)
+    print("signature", type(signature), signature)
     signedData = pycades.SignedData()
     signedData.VerifyHash(hashed_data, b64encode(signature).decode(), pycades.CADESCOM_CADES_BES)
     print(signedData)

@@ -168,49 +168,6 @@ async function generatePDF() {
     }
 }
 
-function InitializeHashedData(cadesplugin, hashAlg, sHashValue) {
-    return new Promise(function (resolve, reject) {
-        cadesplugin.async_spawn(function* (args) {
-            try {
-                // Создаем объект CAdESCOM.HashedData асинхронно
-                var oHashedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
-
-                // Инициализируем объект заранее вычисленным хэш-значением
-                oHashedData.Algorithm = hashAlg;
-                oHashedData.SetHashValue(sHashValue);
-
-                return args[0](oHashedData);
-            } catch (e) {
-                return args[1](e);
-            }
-        }, resolve, reject);
-    });
-}
-
-function CreateSignature(cadesplugin, oCertificate, oHashedData) {
-    return new Promise(function (resolve, reject) {
-        cadesplugin.async_spawn(function* (args) {
-            try {
-                // Создаем объект CAdESCOM.CPSigner асинхронно
-                var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
-                yield oSigner.propset_Certificate(oCertificate);
-                yield oSigner.propset_CheckCertificate(false);
-
-                // Создаем объект CAdESCOM.CadesSignedData асинхронно
-                var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
-
-                // Вычисляем значение подписи
-                var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
-
-                return args[0](sSignedMessage);
-            } catch (err) {
-                var errorMsg = cadesplugin.getLastError ? cadesplugin.getLastError(err) : err.message;
-                return args[1](new Error("Failed to create signature. Error: " + errorMsg));
-            }
-        }, resolve, reject);
-    });
-}
-
 // Подписание PDF (обновленная версия по примеру из статьи)
 function signPDF() {
     if (selectedCertificateIndex === null || !currentDocumentId) {
@@ -229,10 +186,22 @@ function signPDF() {
             let certSubject = yield cert.SubjectName;
             let certThumbprint = yield cert.Thumbprint;
             console.log('Подписание сертификатом:', certSubject);
+            console.log("create oHashedData");
 
-            let oHashedData = yield InitializeHashedData(cadesplugin, cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256, currentDocumentHash);
+            var oHashedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
 
-            let signature = yield CreateSignature(cadesplugin, cert, oHashedData);
+            // Инициализируем объект заранее вычисленным хэш-значением
+            yield oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);;
+            yield oHashedData.SetHashValue(currentDocumentHash);
+            console.log("oHashedData", oHashedData);
+
+            var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+            yield oSigner.propset_Certificate(cert);
+            yield oSigner.propset_CheckCertificate(true);
+
+            var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+            var signature = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+            console.log("signature", signature);
 
             // Скачиваем .sig файл
             const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
