@@ -210,7 +210,7 @@ function CreateSignature(cadesplugin, oCertificate, oHashedData) {
 }
 
 // Подписание PDF (обновленная версия по примеру из статьи)
-async function signPDF() {
+function signPDF() {
     if (selectedCertificateIndex === null || !currentDocumentId) {
         alert('Сначала выберите сертификат и сгенерируйте документ');
         return;
