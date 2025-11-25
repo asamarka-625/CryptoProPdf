@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from web_app.src.routers import router
 
 
-app = FastAPI(title="PDF Signing API")
+app = FastAPI(title="PDF Signing API", prefix="/signature")
 
 app.mount("/static", StaticFiles(directory="web_app/src/static"), name="static")
 
