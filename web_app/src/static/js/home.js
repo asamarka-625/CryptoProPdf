@@ -200,12 +200,24 @@ function signPDF() {
             yield oSigner.propset_CheckCertificate(true);
 
             var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
-            var signature = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
-            console.log("signature", signature);
+            var sSignedMessage = yield oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+            console.log("sSignedMessage", sSignedMessage);
+
+            // Создаем объект CAdESCOM.CadesSignedData
+            var oSignedData2 = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+
+            // Проверяем подпись
+            try {
+                yield oSignedData2.VerifyHash(oHashedData, sSignedMessage, cadesplugin.CADESCOM_CADES_BES);
+                alert("Signature verified");
+            } catch (err) {
+                alert("Failed to verify signature. Error: " + cadesplugin.getLastError(err));
+                return;
+            }
 
             // Скачиваем .sig файл
             const fileName = `document_${currentDocumentId}_${Date.now()}.sig`;
-            const downloadSuccess = downloadSigFile(signature, fileName);
+            const downloadSuccess = downloadSigFile(sSignedMessage, fileName);
 
             // Отправляем подпись на сервер для верификации и сохранения
             statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
@@ -218,7 +230,7 @@ function signPDF() {
                 },
                 body: JSON.stringify({
                     document_id: currentDocumentId,
-                    signature: signature
+                    signature: sSignedMessage
                 })
             });
 
