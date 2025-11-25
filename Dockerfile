@@ -34,6 +34,8 @@ RUN ./install.sh && \
     apt install -y --no-install-recommends ./cprocsp-pki-cades*.deb && \
     rm -rf /var/lib/apt/lists/*
 
+RUN ls -la /app/
+
 RUN cp -r /app/test.000 /var/opt/cprocsp/keys/root &&\
     /opt/cprocsp/bin/amd64/csptest -keyset -enum_cont -fqcn -verifycontext &&\
     /opt/cprocsp/bin/amd64/certmgr -inst -store mroot -file /app/certnew.cer
