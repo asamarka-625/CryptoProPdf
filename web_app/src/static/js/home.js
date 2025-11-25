@@ -1,4 +1,6 @@
 // Глобальные переменные
+const API_BASE = '/signature';
+
 let currentDocumentId = null;
 let currentDocumentHash = null;
 let selectedCertificateIndex = null;
@@ -138,7 +140,7 @@ async function generatePDF() {
     try {
         statusDiv.innerHTML = '<div class="status info">Генерация документа...</div>';
 
-        const response = await fetch('/api/generate-pdf', {
+        const response = await fetch(`{API_BASE}/api/generate-pdf`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -240,7 +242,7 @@ function signPDF() {
             statusDiv.innerHTML += '<div class="status info">Отправка подписи на сервер...</div>';
 
             try {
-                const response = yield fetch(`/api/documents/${currentDocumentId}/sign`, {
+                const response = yield fetch(`{API_BASE}/api/documents/${currentDocumentId}/sign`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -278,7 +280,7 @@ function signPDF() {
 // Скачивание подписанного PDF
 function downloadSignedPDF() {
     if (!currentDocumentId) return;
-    window.open(`/api/documents/${currentDocumentId}/signed`, '_blank');
+    window.open(`{API_BASE}/api/documents/${currentDocumentId}/signed`, '_blank');
 }
 
 function downloadSigFile(signatureData, fileName = 'signature.sig') {
