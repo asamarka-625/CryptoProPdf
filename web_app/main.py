@@ -6,12 +6,12 @@ from fastapi.staticfiles import StaticFiles
 from web_app.src.routers import router
 
 
-app = FastAPI(title="PDF Signing API", prefix="/signature")
+app = FastAPI(title="PDF Signing API")
 
 app.mount("/static", StaticFiles(directory="web_app/src/static"), name="static")
 
 # Подключение маршрутов
-app.include_router(router)
+app.include_router(router, prefix="/signature")
 
 # Настройка CORS для работы с фронтендом
 app.add_middleware(
