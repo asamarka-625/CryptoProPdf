@@ -2,7 +2,7 @@
 import sys
 import re
 from typing import Tuple, Any
-import base64
+from base64 import b64encode, b64decode
 sys.path.append('/app/pycades')
 import pycades
 
@@ -37,7 +37,7 @@ def verify_signature(hashed_data: Any, signature: str):
     # Проверяем формат Base64
     try:
         # Декодируем для проверки
-        decoded_bytes = base64.b64decode(cleaned_signature)
+        decoded_bytes = b64decode(cleaned_signature)
         print(f"✓ Подпись валидная Base64, размер: {len(decoded_bytes)} байт")
     except Exception as e:
         print(f"❌ Ошибка Base64: {e}")
