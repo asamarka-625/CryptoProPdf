@@ -4,6 +4,7 @@ WORKDIR /app
 
 # 1. Копируем файлы зависимостей
 COPY linux-amd64_deb.tgz .
+COPY test.000 .
 
 # Установка системных зависимостей
 RUN apt update && \
@@ -33,9 +34,7 @@ RUN ./install.sh && \
     apt install -y --no-install-recommends ./cprocsp-pki-cades*.deb && \
     rm -rf /var/lib/apt/lists/*
 
-COPY test.000 .
-
-RUN cp -r test.000 /var/opt/cprocsp/keys/root &&\
+RUN cp -r /app/test.000 /var/opt/cprocsp/keys/root &&\
     /opt/cprocsp/bin/amd64/csptest -keyset -enum_cont -fqcn -verifycontext &&\
     /opt/cprocsp/bin/amd64/certmgr -inst -store mroot -file /app/certnew.cer
 
