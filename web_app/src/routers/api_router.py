@@ -83,17 +83,8 @@ async def sign_document(document_id: str, request: SignRequest):
         if document_id not in documents_store:
             raise HTTPException(status_code=404, detail="Document not found")
 
-
         if not request.signature:
             raise HTTPException(status_code=400, detail="Signature is required")
-
-        # 2. Декодирование подписи
-        try:
-            signature_bytes = base64.b64decode(request.signature)
-
-        except Exception as e:
-            config.logger.error(f"Invalid signature format: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"Invalid signature format: {str(e)}")
 
         document_info = documents_store[document_id]
 
@@ -101,7 +92,7 @@ async def sign_document(document_id: str, request: SignRequest):
         try:
             verification_result = verify_signature(
                 hashed_data=document_info.hashed_data,
-                signature=signature_bytes
+                signature=request.signature
             )
 
         except Exception as err:
